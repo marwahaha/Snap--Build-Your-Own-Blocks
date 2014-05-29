@@ -5752,7 +5752,8 @@ WardrobeMorph.prototype.updateList = function () {
         icon,
         template,
         txt,
-        paintbutton;
+        paintbutton,
+        gallerybutton;
 
     this.changed();
     oldFlag = Morph.prototype.trackChanges;
@@ -5795,6 +5796,37 @@ WardrobeMorph.prototype.updateList = function () {
 
 
     this.addContents(paintbutton);
+
+
+//testing
+
+    gallerybutton = new PushButtonMorph(
+        this,
+        "selectCostume",
+        new SymbolMorph("flash", 15)
+    );
+    gallerybutton.padding = 0;
+    gallerybutton.corner = 12;
+    gallerybutton.color = IDE_Morph.prototype.groupColor;
+    gallerybutton.highlightColor = IDE_Morph.prototype.frameColor.darker(50);
+    gallerybutton.pressColor = paintbutton.highlightColor;
+    gallerybutton.labelMinExtent = new Point(36, 18);
+    gallerybutton.labelShadowOffset = new Point(-1, -1);
+    gallerybutton.labelShadowColor = paintbutton.highlightColor;
+    gallerybutton.labelColor = TurtleIconMorph.prototype.labelColor;
+    gallerybutton.contrast = this.buttonContrast;
+    gallerybutton.drawNew();
+    gallerybutton.hint = "Select a costume";
+    gallerybutton.setPosition(new Point(x, y));
+    gallerybutton.fixLayout();
+    gallerybutton.setCenter(icon.center());
+    gallerybutton.setLeft(icon.right() + padding * 4 + paintbutton.width() + padding);
+
+
+    this.addContents(gallerybutton);
+
+
+
 
     txt = new TextMorph(localize(
         "costumes tab help" // look up long string in translator
@@ -5860,6 +5892,41 @@ WardrobeMorph.prototype.paintNew = function () {
         }
     });
 };
+
+
+WardrobeMorph.prototype.selectCostume = function() {
+//open editor that displays all costumes
+//need to get list of costumes
+//for each costume, generate image
+//this.addLibraryCostume('cat2.gif');
+var myself = this,
+    defaultImage = this.sprite instanceof SpriteMorph ? 'cat2.gif' : 'bedroom1.gif';
+new DialogBoxMorph(
+    null,
+    function (definition) {
+        if (definition.spec !== '') {
+            myself.addLibraryCostume(definition);        
+        }
+    },
+    myself).prompt('Costume Library', defaultImage, myself);
+
+}
+
+WardrobeMorph.prototype.addLibraryCostume = function(imgname) {
+    img = new Image();
+    var graphicsName = this.sprite instanceof SpriteMorph ?
+                'Costumes' : 'Backgrounds';
+    img.src = graphicsName + '/' + imgname;
+    var canvas = newCanvas(new Point(img.width, img.height));
+    canvas.getContext('2d').drawImage(img, 0, 0);
+    var cos = new Costume(canvas, imgname),
+        ide = this.parentThatIsA(IDE_Morph);
+    this.sprite.addCostume(cos);
+    if (ide) {
+        ide.currentSprite.wearCostume(cos);
+    }
+
+}
 
 // Wardrobe drag & drop
 
