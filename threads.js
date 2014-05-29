@@ -3076,13 +3076,9 @@ VariableFrame.prototype.names = function () {
     return names;
 };
 
-VariableFrame.prototype.getNamesDict = function(dict, scope) {
-    var current = this;
-    
-    if (scope == "global") {
-        current = this.parentFrame;
-    }
-    
+VariableFrame.prototype.allNamesDict = function () {
+    var dict = {}, current = this;
+
     function addKeysToDict(srcDict, trgtDict) {
         var eachKey;
         for (eachKey in srcDict) {
@@ -3091,55 +3087,27 @@ VariableFrame.prototype.getNamesDict = function(dict, scope) {
             }
         }
     }
-    
-    addKeysToDict(current.vars, dict);
+
+    while (current) {
+        addKeysToDict(current.vars, dict);
+        current = current.parentFrame;
+    }
     return dict;
 };
 
-VariableFrame.prototype.localNamesDict = function() {
-    return this.getNamesDict({}, "local");
-};
-
-VariableFrame.prototype.globalNamesDict = function() {
-    return this.getNamesDict({}, "global");
-}
-
-VariableFrame.prototype.allNamesDict = function () {
-    var dict = this.getNamesDict({}, "local");
-    return this.getNamesDict(dict, "global");
-};
-
-VariableFrame.prototype.getNames = function (scope) {
+VariableFrame.prototype.allNames = function () {
 /*
     only show the names of the lexical scope, hybrid scoping is
     reserved to the daring ;-)
 */
     var answer = [], each, dict = this.allNamesDict();
-    
-    if (scope == "local") {
-        dict = this.localNamesDict();
-    } else if (scope == "global") {
-        dict = this.globalNamesDict();
-    }
-    
+
     for (each in dict) {
         if (Object.prototype.hasOwnProperty.call(dict, each)) {
             answer.push(each);
         }
     }
     return answer;
-};
-
-VariableFrame.prototype.allNames = function() {
-    return this.getNames("all");
-};
-
-VariableFrame.prototype.globalNames = function() {
-    return this.getNames("global");
-};
-
-VariableFrame.prototype.localNames = function() {
-    return this.getNames("local");
 };
 
 // Variable /////////////////////////////////////////////////////////////////
