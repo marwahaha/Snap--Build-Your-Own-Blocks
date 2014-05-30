@@ -5798,7 +5798,7 @@ WardrobeMorph.prototype.updateList = function () {
     this.addContents(paintbutton);
 
 
-//testing
+//Select Costume button
 
     gallerybutton = new PushButtonMorph(
         this,
@@ -5894,39 +5894,349 @@ WardrobeMorph.prototype.paintNew = function () {
 };
 
 
-WardrobeMorph.prototype.selectCostume = function() {
-//open editor that displays all costumes
-//need to get list of costumes
-//for each costume, generate image
-//this.addLibraryCostume('cat2.gif');
-var myself = this,
-    defaultImage = this.sprite instanceof SpriteMorph ? 'cat2.gif' : 'bedroom1.gif';
-new DialogBoxMorph(
-    null,
-    function (definition) {
-        if (definition.spec !== '') {
-            myself.addLibraryCostume(definition);        
-        }
-    },
-    myself).prompt('Costume Library', defaultImage, myself);
 
+
+
+// MediaLibraryDialogMorph ////////////////////////////////////////////////////
+
+// MediaLibraryDialogMorph inherits from DialogBoxMorph:
+
+MediaLibraryDialogMorph.prototype = new DialogBoxMorph();
+MediaLibraryDialogMorph.prototype.constructor = ProjectDialogMorph;
+MediaLibraryDialogMorph.uber = DialogBoxMorph.prototype;
+
+// MediaLibraryDialogMorph instance creation:
+
+function MediaLibraryDialogMorph(ide, isSprite, env) {
+    this.init(ide, isSprite, env);
+}
+
+MediaLibraryDialogMorph.prototype.init = function (ide, isSprite, environment) {
+    var myself = this;
+
+    // additional properties:
+    this.ide = ide;
+    this.env = environment;
+    this.isSprite = isSprite;
+
+    this.handle = null;
+    this.srcBar = null;
+    this.nameField = null;
+    this.listField = null;
+    this.preview = null;
+    this.notesText = null;
+    this.notesField = null;
+
+
+    // initialize inherited properties:
+    MediaLibraryDialogMorph.uber.init.call(
+        this,
+        this, // target
+        null, // function
+        null // environment
+    );
+
+    // override inherited properites:
+    this.labelString = 'Select Costume from Media Library';
+    this.createLabel();
+
+    // build contents
+    this.buildContents();
+    this.onNextStep = function () { // yield to show "updating" message
+        myself.setSource(myself.isSprite);
+    };
+};
+
+MediaLibraryDialogMorph.prototype.buildContents = function () {
+    var thumbnail, notification;
+
+    this.addBody(new Morph());
+    this.body.color = this.color;
+
+    this.srcBar = new AlignmentMorph('column', this.padding / 2);
+
+    this.srcBar.fixLayout();
+    this.body.add(this.srcBar);
+
+
+    this.listField = new ListMorph([]);
+    this.fixListFieldItemColors();
+    this.listField.fixLayout = nop;
+    this.listField.edge = InputFieldMorph.prototype.edge;
+    this.listField.fontSize = InputFieldMorph.prototype.fontSize;
+    this.listField.typeInPadding = InputFieldMorph.prototype.typeInPadding;
+    this.listField.contrast = InputFieldMorph.prototype.contrast;
+    this.listField.drawNew = InputFieldMorph.prototype.drawNew;
+    this.listField.drawRectBorder = InputFieldMorph.prototype.drawRectBorder;
+
+    this.body.add(this.listField);
+
+    this.preview = new Morph();
+    this.preview.fixLayout = nop;
+    this.preview.edge = InputFieldMorph.prototype.edge;
+    this.preview.fontSize = InputFieldMorph.prototype.fontSize;
+    this.preview.typeInPadding = InputFieldMorph.prototype.typeInPadding;
+    this.preview.contrast = InputFieldMorph.prototype.contrast;
+    this.preview.drawNew = function () {
+        InputFieldMorph.prototype.drawNew.call(this);
+        if (this.texture) {
+            this.drawTexture(this.texture);
+        }
+    };
+
+    this.preview.drawCachedTexture = function () {
+        var context = this.image.getContext('2d');
+        context.drawImage(this.cachedTexture, this.edge, this.edge);
+        this.changed();
+    };
+    this.preview.drawRectBorder = InputFieldMorph.prototype.drawRectBorder;
+    this.preview.setExtent(
+        this.ide.serializer.thumbnailSize.add(this.preview.edge * 2)
+    );
+
+    this.body.add(this.preview);
+    this.preview.drawNew();
+   
+    this.notesField = new ScrollFrameMorph();
+    this.notesField.fixLayout = nop;
+
+    this.notesField.edge = InputFieldMorph.prototype.edge;
+    this.notesField.fontSize = InputFieldMorph.prototype.fontSize;
+    this.notesField.typeInPadding = InputFieldMorph.prototype.typeInPadding;
+    this.notesField.contrast = InputFieldMorph.prototype.contrast;
+    this.notesField.drawNew = InputFieldMorph.prototype.drawNew;
+    this.notesField.drawRectBorder = InputFieldMorph.prototype.drawRectBorder;
+
+    this.notesField.acceptsDrops = false;
+    this.notesField.contents.acceptsDrops = false;
+
+        this.notesText = new TextMorph('');
+   
+    this.notesField.isTextLineWrapping = true;
+    this.notesField.padding = 3;
+    this.notesField.setContents(this.notesText);
+    this.notesField.setWidth(this.preview.width());
+
+    // this.body.add(this.notesField);
+
+    this.addButton('addLibraryCostume', 'OK');
+    this.addButton('cancel', 'Cancel');
+
+    if (notification) {
+        this.setExtent(new Point(455, 335).add(notification.extent()));
+    } else {
+        this.setExtent(new Point(455, 335));
+    }
+    this.fixLayout();
+
+};
+
+MediaLibraryDialogMorph.prototype.addLibraryCostume = function () {
+    var myself = this;
+    myself.env.addLibraryCostume(myself.listField.selected);
+    myself.destroy();
+}
+
+MediaLibraryDialogMorph.prototype.popUp = function (wrrld) {
+    var world = wrrld || this.ide.world();
+    if (world) {
+        MediaLibraryDialogMorph.uber.popUp.call(this, world);
+        this.handle = new HandleMorph(
+            this,
+            350,
+            300,
+            this.corner,
+            this.corner
+        );
+    }
+};
+
+// MediaLibraryDialogMorph list field control
+
+MediaLibraryDialogMorph.prototype.fixListFieldItemColors = function () {
+    // remember to always fixLayout() afterwards for the changes
+    // to take effect
+    var myself = this;
+    this.listField.contents.children[0].alpha = 0;
+    this.listField.contents.children[0].children.forEach(function (item) {
+        item.pressColor = myself.titleBarColor.darker(20);
+        item.color = new Color(0, 0, 0, 0);
+        item.noticesTransparentClick = true;
+    });
+};
+////////////////////////////////////////////
+
+
+
+
+MediaLibraryDialogMorph.prototype.setSource = function (isSprite) {
+    var myself = this,
+        msg;
+
+    this.srcBar.children.forEach(function (button) {
+        button.refresh();
+    });
+
+    this.projectList = myself.ide.getCostumesList(isSprite ? 'Costumes' : 'Backgrounds'); //get costumes
+ 
+    this.listField.destroy();
+    this.listField = new ListMorph(
+        this.projectList,
+        this.projectList.length > 0 ?
+                function (element) {
+                    return element;
+                } : null,
+        null,
+        null //will implement doubleclick callback e.g. function () {myself.ok(); }
+    );
+
+    this.fixListFieldItemColors();
+    this.listField.fixLayout = nop;
+    this.listField.edge = InputFieldMorph.prototype.edge;
+    this.listField.fontSize = InputFieldMorph.prototype.fontSize;
+    this.listField.typeInPadding = InputFieldMorph.prototype.typeInPadding;
+    this.listField.contrast = InputFieldMorph.prototype.contrast;
+    this.listField.drawNew = InputFieldMorph.prototype.drawNew;
+    this.listField.drawRectBorder = InputFieldMorph.prototype.drawRectBorder;
+
+        this.listField.action = function (item) {
+            var src, dir;
+            if (item === undefined) {return; }
+
+            dir = myself.isSprite ? 'Costumes' : 'Backgrounds'; 
+            src = 'http://ses.berkeley.edu/snap/snap/Snap--Build-Your-Own-Blocks/' + dir + '/' +
+                    item;
+            myself.notesText.text = '';
+            myself.notesText.drawNew();
+            myself.notesField.contents.adjustBounds();
+
+            myself.preview.texture = src;
+            myself.preview.cachedTexture = null;
+            myself.preview.drawNew();
+            myself.edit();
+        };
+    this.body.add(this.listField);
+    this.buttons.fixLayout();
+    this.fixLayout();
+};
+
+
+
+///////////MediaLibraryDialogMorph layout
+
+MediaLibraryDialogMorph.prototype.fixLayout = function () {
+    var th = fontHeight(this.titleFontSize) + this.titlePadding * 2,
+        thin = this.padding / 2,
+        oldFlag = Morph.prototype.trackChanges;
+
+    Morph.prototype.trackChanges = false;
+
+    if (this.buttons && (this.buttons.children.length > 0)) {
+        this.buttons.fixLayout();
+    }
+
+    if (this.body) {
+        this.body.setPosition(this.position().add(new Point(
+            this.padding,
+            th + this.padding
+        )));
+        this.body.setExtent(new Point(
+            this.width() - this.padding * 2,
+            this.height() - this.padding * 3 - th - this.buttons.height()
+        ));
+        this.srcBar.setPosition(this.body.position());
+        if (this.nameField) {
+            this.nameField.setWidth(
+                this.body.width() - this.srcBar.width() - this.padding * 6
+            );
+            this.nameField.setLeft(this.srcBar.right() + this.padding * 3);
+            this.nameField.setTop(this.srcBar.top());
+            this.nameField.drawNew();
+        }
+
+        this.listField.setLeft(this.srcBar.right() + this.padding);
+        this.listField.setWidth(
+            this.body.width()
+                - this.srcBar.width()
+                - this.preview.width()
+                - this.padding
+                - thin
+        );
+        this.listField.contents.children[0].adjustWidths();
+
+        if (this.nameField) {
+            this.listField.setTop(this.nameField.bottom() + this.padding);
+            this.listField.setHeight(
+                this.body.height() - this.nameField.height() - this.padding
+            );
+        } else {
+            this.listField.setTop(this.body.top());
+            this.listField.setHeight(this.body.height());
+        }
+
+        this.preview.setRight(this.body.right());
+        if (this.nameField) {
+            this.preview.setTop(this.nameField.bottom() + this.padding);
+        } else {
+            this.preview.setTop(this.body.top());
+        }
+
+
+        this.preview.setHeight(this.listField.height());
+//       this.preview.setLeft(this.listField.right() + this.padding);
+
+
+        this.notesField.setTop(this.preview.bottom() + thin);
+        this.notesField.setLeft(this.preview.left());
+        this.notesField.setHeight(
+            this.body.bottom() - this.preview.bottom() - thin
+        );
+    }
+
+    if (this.label) {
+        this.label.setCenter(this.center());
+        this.label.setTop(this.top() + (th - this.label.height()) / 2);
+    }
+
+    if (this.buttons && (this.buttons.children.length > 0)) {
+        this.buttons.setCenter(this.center());
+        this.buttons.setBottom(this.bottom() - this.padding);
+    }
+
+    Morph.prototype.trackChanges = oldFlag;
+    this.changed();
+};
+
+
+///////////////
+
+
+
+
+WardrobeMorph.prototype.selectCostume = function() {
+    var myself = this;
+    new MediaLibraryDialogMorph(myself.parentThatIsA(IDE_Morph), this.sprite instanceof SpriteMorph, myself).popUp();
 }
 
 WardrobeMorph.prototype.addLibraryCostume = function(imgname) {
-    img = new Image();
-    var graphicsName = this.sprite instanceof SpriteMorph ?
+    var myself = this,
+        img = new Image(),
+        graphicsName = this.sprite instanceof SpriteMorph ?
                 'Costumes' : 'Backgrounds';
     img.src = graphicsName + '/' + imgname;
-    var canvas = newCanvas(new Point(img.width, img.height));
-    canvas.getContext('2d').drawImage(img, 0, 0);
-    var cos = new Costume(canvas, imgname),
-        ide = this.parentThatIsA(IDE_Morph);
-    this.sprite.addCostume(cos);
-    if (ide) {
-        ide.currentSprite.wearCostume(cos);
+    img.onload = function() {
+        var canvas = newCanvas(new Point(img.width, img.height));
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        var cos = new Costume(canvas, imgname),
+            ide = myself.parentThatIsA(IDE_Morph);
+        myself.sprite.addCostume(cos);
+        if (ide) {
+            ide.currentSprite.wearCostume(cos);
+        }
     }
 
 }
+
 
 // Wardrobe drag & drop
 
